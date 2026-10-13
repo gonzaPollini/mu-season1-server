@@ -42,3 +42,15 @@ docker compose logs -f openmu-startup
 Cambiar `OPENMU_IMAGE` en el `Dockerfile` (por ejemplo a `munique/openmu:0.9.12`) y
 `docker compose up -d --build`. Los plugins se recompilan contra la versión nueva, así que un
 cambio de API de OpenMU aparece como error de compilación.
+
+---
+
+## 📝 Últimos cambios
+
+### 2026-10-13
+
+**Commits incluidos:**
+- (sin commits pendientes)
+
+**Archivos modificados:**
+  - (ninguno detectado)
