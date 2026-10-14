@@ -45,8 +45,15 @@ internal static class JewelryUpgrade
     /// <summary>El tope de un arma o un set.</summary>
     private const byte MaximumLevel = 15;
 
+    /// <summary>
+    /// La llave: con <c>SEASON1_JEWELRY_UPGRADE=off</c> (server/.env) las tres joyas se comportan como las de
+    /// OpenMU en todos los ítems. No se apagan desde el panel: OpenMU deja la joya sin handler al desactivar uno.
+    /// </summary>
+    public static readonly bool Enabled =
+        !string.Equals(Environment.GetEnvironmentVariable("SEASON1_JEWELRY_UPGRADE"), "off", StringComparison.OrdinalIgnoreCase);
+
     public static bool Applies(Item item) =>
-        item.Definition is { Group: 13 } definition && Numbers.Contains(definition.Number);
+        Enabled && item.Definition is { Group: 13 } definition && Numbers.Contains(definition.Number);
 
     /// <summary>
     /// Lo de <c>UpgradeItemLevelJewelConsumeHandlerPlugIn.ModifyItem</c>: los niveles que acepta la joya salen
