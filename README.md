@@ -35,7 +35,7 @@ compila con `bun run build` en ese repo; `web` sirve lo último compilado, sin r
 - **StatChatCommands**: `/addstr`, `/addagi`, `/addvit`, `/addene`, `/addcmd` y en español
   `/fuerza`, `/agilidad`, `/vitalidad`, `/energia`, `/comando` (todos con la cantidad, ej. `/fuerza 100`).
   Los de OpenMU vienen desactivados; estos quedan activos solos, sin tocar la base.
-- **JewelryUpgrade**: Jewel of Bless y Jewel of Soul también suben los anillos y colgantes comunes (Ice, Poison, Lighting, Fire, Earth, Wind, Magic, Water, Ability), con los mismos niveles que armas y sets (Bless hasta +6, Soul hasta +9) pero **chances propias, más caras**, configuradas al principio de `plugins/JewelryUpgrade.cs`: Bless 50 % (+10 % con suerte), si falla baja un nivel; Soul 30 % (+15 % con suerte), si falla desde +7 vuelve a +0. Life ya les agrega la opción. Reemplazan a los handlers de OpenMU con la misma clave; armas y sets siguen con la lógica original.
+- **JewelryUpgrade**: Jewel of Bless y Jewel of Soul también suben los anillos y colgantes comunes (Ice, Poison, Lighting, Fire, Earth, Wind, Magic, Water, Ability), con los mismos niveles que armas y sets (Bless hasta +6, Soul hasta +9) con **chances propias**, configuradas al principio de `plugins/JewelryUpgrade.cs`: Bless siempre sube hasta +6; Soul 30 % (+15 % con suerte), si falla desde +7 vuelve a +0. Life ya les agrega la opción. Reemplazan a los handlers de OpenMU con la misma clave; armas y sets siguen con la lógica original.
 
 ## Uso
 

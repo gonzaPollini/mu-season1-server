@@ -25,8 +25,8 @@ internal static class JewelryUpgrade
 {
     // ===== Configuración: cuánto cuesta subir anillos y colgantes =====
 
-    /// <summary>Bless: de +0 a +6. Falla 1 de cada 2 y, si falla, baja un nivel.</summary>
-    public static readonly JewelryRates Bless = new(SuccessPercent: 50, LuckBonusPercent: 10, ResetToZeroFromLevel: byte.MaxValue);
+    /// <summary>Bless: de +0 a +6, siempre sube (como en armas y sets).</summary>
+    public static readonly JewelryRates Bless = new(SuccessPercent: 100, LuckBonusPercent: 0, ResetToZeroFromLevel: byte.MaxValue);
 
     /// <summary>Soul: hasta +9. Sube 3 de cada 10 (4,5 con suerte); si falla desde +7 vuelve a +0, si no baja uno.</summary>
     public static readonly JewelryRates Soul = new(SuccessPercent: 30, LuckBonusPercent: 15, ResetToZeroFromLevel: 7);
