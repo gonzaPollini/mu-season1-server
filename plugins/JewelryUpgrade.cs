@@ -1,10 +1,12 @@
 namespace Season1.OpenMU.ItemConsumeActions;
 
+using System.ComponentModel;
 using System.Runtime.InteropServices;
 using MUnique.OpenMU.DataModel.Configuration.Items;
 using MUnique.OpenMU.DataModel.Entities;
 using MUnique.OpenMU.GameLogic;
 using MUnique.OpenMU.GameLogic.PlayerActions.ItemConsumeActions;
+using MUnique.OpenMU.GameLogic.PlugIns;
 using MUnique.OpenMU.Persistence;
 using MUnique.OpenMU.PlugIns;
 
@@ -45,15 +47,13 @@ internal static class JewelryUpgrade
     /// <summary>El tope de un arma o un set.</summary>
     private const byte MaximumLevel = 15;
 
-    /// <summary>
-    /// La llave: con <c>SEASON1_JEWELRY_UPGRADE=off</c> (server/.env) las tres joyas se comportan como las de
-    /// OpenMU en todos los ítems. No se apagan desde el panel: OpenMU deja la joya sin handler al desactivar uno.
-    /// </summary>
-    public static readonly bool Enabled =
-        !string.Equals(Environment.GetEnvironmentVariable("SEASON1_JEWELRY_UPGRADE"), "off", StringComparison.OrdinalIgnoreCase);
+    /// <summary>El juego del uso en curso: lo fija cada handler para que <see cref="Applies"/> consulte el interruptor.</summary>
+    public static readonly AsyncLocal<IGameContext?> Context = new();
 
+    /// <summary>Un anillo o colgante común, con el interruptor <see cref="JewelryUpgradeSwitch"/> prendido en el panel.</summary>
     public static bool Applies(Item item) =>
-        Enabled && item.Definition is { Group: 13 } definition && Numbers.Contains(definition.Number);
+        item.Definition is { Group: 13 } definition && Numbers.Contains(definition.Number)
+        && Context.Value?.PlugInManager.IsPlugInActive(typeof(JewelryUpgradeSwitch)) == true;
 
     /// <summary>
     /// Lo de <c>UpgradeItemLevelJewelConsumeHandlerPlugIn.ModifyItem</c>: los niveles que acepta la joya salen
@@ -138,9 +138,16 @@ internal static class JewelryUpgrade
 
 [PlugIn]
 [Guid("5b2c8e41-7d0a-4f6e-9a3b-1c4d5e6f7a81")]
-[Display(Name = "Jewel of Bless (Season1)", Description = "Como el de OpenMU, y además sube anillos y colgantes.")]
+[Display(Name = "Jewel of Bless (Season1)", Description = "El de OpenMU; sube anillos y colgantes si está prendida «Joyería: subir anillos y colgantes». No desactivar.")]
 public class BlessJewelSeason1 : BlessJewelConsumeHandlerPlugIn
 {
+    /// <inheritdoc />
+    public override ValueTask<bool> ConsumeItemAsync(Player player, Item item, Item? targetItem, FruitUsage fruitUsage)
+    {
+        JewelryUpgrade.Context.Value = player.GameContext;
+        return base.ConsumeItemAsync(player, item, targetItem, fruitUsage);
+    }
+
     /// <inheritdoc />
     protected override bool ModifyItem(Item item, IContext persistenceContext) =>
         JewelryUpgrade.Applies(item)
@@ -150,9 +157,16 @@ public class BlessJewelSeason1 : BlessJewelConsumeHandlerPlugIn
 
 [PlugIn]
 [Guid("5b2c8e41-7d0a-4f6e-9a3b-1c4d5e6f7a82")]
-[Display(Name = "Jewel of Soul (Season1)", Description = "Como el de OpenMU, y además sube anillos y colgantes.")]
+[Display(Name = "Jewel of Soul (Season1)", Description = "El de OpenMU; sube anillos y colgantes si está prendida «Joyería: subir anillos y colgantes». No desactivar.")]
 public class SoulJewelSeason1 : SoulJewelConsumeHandlerPlugIn
 {
+    /// <inheritdoc />
+    public override ValueTask<bool> ConsumeItemAsync(Player player, Item item, Item? targetItem, FruitUsage fruitUsage)
+    {
+        JewelryUpgrade.Context.Value = player.GameContext;
+        return base.ConsumeItemAsync(player, item, targetItem, fruitUsage);
+    }
+
     /// <inheritdoc />
     protected override bool ModifyItem(Item item, IContext persistenceContext) =>
         JewelryUpgrade.Applies(item)
@@ -162,10 +176,32 @@ public class SoulJewelSeason1 : SoulJewelConsumeHandlerPlugIn
 
 [PlugIn]
 [Guid("5b2c8e41-7d0a-4f6e-9a3b-1c4d5e6f7a83")]
-[Display(Name = "Jewel of Life (Season1)", Description = "Como el de OpenMU, con chance propia para anillos y colgantes.")]
+[Display(Name = "Jewel of Life (Season1)", Description = "El de OpenMU; chance propia en anillos y colgantes si está prendida «Joyería: subir anillos y colgantes». No desactivar.")]
 public class LifeJewelSeason1 : LifeJewelConsumeHandlerPlugIn
 {
     /// <inheritdoc />
+    public override ValueTask<bool> ConsumeItemAsync(Player player, Item item, Item? targetItem, FruitUsage fruitUsage)
+    {
+        JewelryUpgrade.Context.Value = player.GameContext;
+        return base.ConsumeItemAsync(player, item, targetItem, fruitUsage);
+    }
+
+    /// <inheritdoc />
     protected override bool ModifyItem(Item item, IContext persistenceContext) =>
         JewelryUpgrade.Applies(item) ? JewelryUpgrade.UpgradeOption(item, persistenceContext) : base.ModifyItem(item, persistenceContext);
+}
+
+/// <summary>
+/// El interruptor del panel de admin: prendido, Bless, Soul y Life suben anillos y colgantes; apagado, las tres joyas
+/// hacen lo de OpenMU. Se toma en vivo, sin reiniciar. No hace nada más (el punto de extensión es sólo para figurar).
+/// </summary>
+[PlugIn]
+[Guid("5b2c8e41-7d0a-4f6e-9a3b-1c4d5e6f7a90")]
+[Display(Name = "Joyería: subir anillos y colgantes con Bless, Soul y Life (Season1)", Description = "Prendido: las tres joyas suben anillos y colgantes comunes, con las chances de JewelryUpgrade.cs. Apagado: como OpenMU.")]
+public class JewelryUpgradeSwitch : IItemConsumingPlugIn
+{
+    /// <inheritdoc />
+    public void ItemConsuming(Player player, Item item, Item? targetItem, CancelEventArgs eventArgs)
+    {
+    }
 }
