@@ -25,21 +25,12 @@ internal sealed record JewelryRates(byte SuccessPercent, byte LuckBonusPercent, 
 
 internal static class JewelryUpgrade
 {
-    // ===== Configuración: cuánto cuesta subir anillos y colgantes =====
+    // Las chances viven en la configuración del interruptor (JewelryUpgradeConfiguration), editable en el panel.
+    private static JewelryUpgradeConfiguration Rates => JewelryUpgradeSwitch.Current ?? JewelryUpgradeConfiguration.Default;
 
-    /// <summary>Bless: de +0 a +6, siempre sube (como en armas y sets).</summary>
-    public static readonly JewelryRates Bless = new(SuccessPercent: 100, LuckBonusPercent: 0, ResetToZeroFromLevel: byte.MaxValue);
+    public static JewelryRates Bless => new(Rates.BlessSuccessPercent, Rates.BlessLuckBonusPercent, Rates.BlessResetToZeroFromLevel);
 
-    /// <summary>Soul: hasta +9. Sube 3 de cada 10 (4,5 con suerte); si falla desde +7 vuelve a +0, si no baja uno.</summary>
-    public static readonly JewelryRates Soul = new(SuccessPercent: 30, LuckBonusPercent: 15, ResetToZeroFromLevel: 7);
-
-    /// <summary>
-    /// Life: agrega la opción y la sube de a un nivel (+4 cada vez). Es la que más cuesta: 1 de cada 10, sin bono por
-    /// suerte; si falla, el ítem pierde la opción (como en armas y sets, donde la chance es 50 %).
-    /// </summary>
-    public const double LifeSuccessChance = 0.10;
-
-    // ===================================================================
+    public static JewelryRates Soul => new(Rates.SoulSuccessPercent, Rates.SoulLuckBonusPercent, Rates.SoulResetToZeroFromLevel);
 
     /// <summary>Los anillos y colgantes comunes (grupo 13): Ice, Poison, Lighting, Fire, Earth, Wind, Magic, Water, Ability.</summary>
     private static readonly HashSet<short> Numbers = [8, 9, 12, 13, 21, 22, 23, 24, 25, 26, 27, 28];
@@ -87,7 +78,7 @@ internal static class JewelryUpgrade
         return true;
     }
 
-    /// <summary>Lo de <c>ItemUpgradeConsumeHandlerPlugIn</c> para la opción (Life), con <see cref="LifeSuccessChance"/>.</summary>
+    /// <summary>Lo de <c>ItemUpgradeConsumeHandlerPlugIn</c> para la opción (Life), con <c>LifeSuccessPercent</c>.</summary>
     public static bool UpgradeOption(Item item, IContext persistenceContext)
     {
         var options = item.Definition!.PossibleItemOptions.SelectMany(o => o.PossibleOptions)
@@ -106,7 +97,7 @@ internal static class JewelryUpgrade
                 return false;
             }
 
-            if (Rand.NextRandomBool(LifeSuccessChance))
+            if (Rand.NextRandomBool((int)Rates.LifeSuccessPercent))
             {
                 current.Level++;
             }
@@ -118,7 +109,7 @@ internal static class JewelryUpgrade
             return true;
         }
 
-        if (Rand.NextRandomBool(LifeSuccessChance))
+        if (Rand.NextRandomBool((int)Rates.LifeSuccessPercent))
         {
             var possible = options.Where(o => !o.LevelDependentOptions.Any() || o.LevelDependentOptions.Any(l => l.RequiredItemLevel <= item.Level)).ToList();
             if (possible.Count == 0)
@@ -198,10 +189,53 @@ public class LifeJewelSeason1 : LifeJewelConsumeHandlerPlugIn
 [PlugIn]
 [Guid("5b2c8e41-7d0a-4f6e-9a3b-1c4d5e6f7a90")]
 [Display(Name = "Joyería: subir anillos y colgantes con Bless, Soul y Life (Season1)", Description = "Prendido: las tres joyas suben anillos y colgantes comunes, con las chances de JewelryUpgrade.cs. Apagado: como OpenMU.")]
-public class JewelryUpgradeSwitch : IItemConsumingPlugIn
+public class JewelryUpgradeSwitch : IItemConsumingPlugIn, ISupportCustomConfiguration<JewelryUpgradeConfiguration>, ISupportDefaultCustomConfiguration
 {
+    /// <summary>Lo último que puso el panel; OpenMU lo asigna al arrancar y cada vez que se guarda.</summary>
+    public static JewelryUpgradeConfiguration? Current { get; private set; }
+
+    /// <inheritdoc />
+    public JewelryUpgradeConfiguration? Configuration
+    {
+        get => Current;
+        set => Current = value;
+    }
+
+    /// <inheritdoc />
+    public object CreateDefaultConfig() => new JewelryUpgradeConfiguration();
+
     /// <inheritdoc />
     public void ItemConsuming(Player player, Item item, Item? targetItem, CancelEventArgs eventArgs)
     {
     }
+}
+
+/// <summary>
+/// Cuánto cuesta subir anillos y colgantes, editable en el panel de admin (interruptor «Joyería…»), en vivo.
+/// Armas y sets no cambian: usan la configuración de OpenMU.
+/// </summary>
+public class JewelryUpgradeConfiguration
+{
+    internal static readonly JewelryUpgradeConfiguration Default = new();
+
+    [Display(Name = "Bless: % de éxito", Description = "Sube de +0 a +6. 100 = siempre.")]
+    public byte BlessSuccessPercent { get; set; } = 100;
+
+    [Display(Name = "Bless: % extra con suerte")]
+    public byte BlessLuckBonusPercent { get; set; }
+
+    [Display(Name = "Bless: si falla desde este nivel vuelve a +0", Description = "Por debajo baja un nivel. 255 = nunca vuelve a +0.")]
+    public byte BlessResetToZeroFromLevel { get; set; } = byte.MaxValue;
+
+    [Display(Name = "Soul: % de éxito", Description = "Sube hasta +9.")]
+    public byte SoulSuccessPercent { get; set; } = 30;
+
+    [Display(Name = "Soul: % extra con suerte")]
+    public byte SoulLuckBonusPercent { get; set; } = 15;
+
+    [Display(Name = "Soul: si falla desde este nivel vuelve a +0", Description = "Por debajo baja un nivel.")]
+    public byte SoulResetToZeroFromLevel { get; set; } = 7;
+
+    [Display(Name = "Life: % de éxito", Description = "Agrega o sube la opción; si falla, el ítem la pierde.")]
+    public byte LifeSuccessPercent { get; set; } = 10;
 }
