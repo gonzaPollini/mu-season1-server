@@ -35,6 +35,7 @@ compila con `bun run build` en ese repo; `web` sirve lo último compilado, sin r
 - **StatChatCommands**: `/addstr`, `/addagi`, `/addvit`, `/addene`, `/addcmd` y en español
   `/fuerza`, `/agilidad`, `/vitalidad`, `/energia`, `/comando` (todos con la cantidad, ej. `/fuerza 100`).
   Los de OpenMU vienen desactivados; estos quedan activos solos, sin tocar la base.
+- **JewelryUpgrade**: Jewel of Bless y Jewel of Soul también suben los anillos y colgantes comunes (Ice, Poison, Lighting, Fire, Earth, Wind, Magic, Water, Ability), con la misma lógica que en armas y sets (Bless +1 hasta +6; Soul hasta +9, 50 % y +25 % con suerte, y si falla desde +7 vuelve a +0). Life ya les agrega la opción. Reemplazan a los handlers de OpenMU con la misma clave; el resto de los ítems usa la lógica original.
 
 ## Uso
 
