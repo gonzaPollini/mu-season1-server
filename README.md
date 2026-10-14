@@ -65,10 +65,14 @@ cambio de API de OpenMU aparece como error de compilación.
 
 ## 📝 Últimos cambios
 
-### 2026-10-13
+### 2026-10-14
 
 **Commits incluidos:**
 - (sin commits pendientes)
 
 **Archivos modificados:**
-  - (ninguno detectado)
+  - `.example`: .env.example
+  - `otros`: .gitignore, Caddyfile
+  - `.md`: README.md
+  - `.yml`: compose.yml
+  - `.cs`: StatChatCommands.cs
