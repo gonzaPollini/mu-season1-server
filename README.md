@@ -72,8 +72,5 @@ cambio de API de OpenMU aparece como error de compilación.
 - (sin commits pendientes)
 
 **Archivos modificados:**
-  - `.example`: .env.example
-  - `otros`: .gitignore, Caddyfile
   - `.md`: README.md
-  - `.yml`: compose.yml
-  - `.cs`: StatChatCommands.cs
+  - `.cs`: JewelryUpgrade.cs
