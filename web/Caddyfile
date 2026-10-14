@@ -1,0 +1,16 @@
+# El cliente web compilado (mu-season1-client, `bun run build` -> dist/) servido por Caddy.
+#
+# Local: SITE_ADDRESS=:4173 (por defecto), HTTP plano.
+# Producción: SITE_ADDRESS=play.tudominio.com -> Caddy saca el certificado solo y sirve HTTP/2 y
+# HTTP/3, que mandan muchos pedidos por una sola conexión.
+{$SITE_ADDRESS::4173} {
+	root * /srv/client
+	# Los .gz y .bin ya vienen comprimidos; esto comprime el resto (JS, CSS, JSON).
+	encode zstd gzip
+	# El index y el service worker nunca de la caché: un build nuevo se ve al recargar.
+	header /index.html Cache-Control no-cache
+	header /sw.js Cache-Control no-cache
+	# Rutas de la app (/online, /offline, /servers): las resuelve el cliente.
+	try_files {path} /index.html
+	file_server
+}

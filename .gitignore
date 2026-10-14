@@ -1,2 +1,3 @@
 plugins/bin/
 plugins/obj/
+.env

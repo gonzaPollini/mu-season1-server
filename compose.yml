@@ -1,5 +1,5 @@
 # OpenMU 0.9.10 local (la versión que usa el instalador de OpenMu-Client-Babylon).
-# Juego publicado en la LAN (192.168.0.253) y en localhost; panel de admin sólo en http://localhost:8081
+# Juego publicado en la LAN (LAN_IP, en .env) y en localhost; panel de admin sólo en http://localhost:8081
 name: openmu-local
 services:
   openmu-startup:
@@ -9,16 +9,16 @@ services:
     container_name: openmu-startup
     ports:
       - "127.0.0.1:8081:8080"
-      - "192.168.0.253:44405:44405"
+      - "${LAN_IP:?falta LAN_IP en .env (ver .env.example)}:44405:44405"
       - "127.0.0.1:44405:44405"
-      - "192.168.0.253:44406:44406"
+      - "${LAN_IP}:44406:44406"
       - "127.0.0.1:44406:44406"
-      - "192.168.0.253:55901-55906:55901-55906"
+      - "${LAN_IP}:55901-55906:55901-55906"
       - "127.0.0.1:55980:55980"
     environment:
       DB_HOST: database
       ASPNETCORE_URLS: http://+:8080
-      RESOLVE_IP: 192.168.0.253   # IP de la notebook en la LAN: la usan MuMain (Windows) y el proxy del navegador
+      RESOLVE_IP: ${LAN_IP}   # IP de la notebook en la LAN: la usan MuMain (Windows) y el proxy del navegador
     working_dir: /app/
     depends_on: [database]
   database:
@@ -30,5 +30,46 @@ services:
       POSTGRES_USER: postgres
     volumes:
       - dbdata:/var/lib/postgresql/data
+  # Puente WebSocket -> TCP para el cliente web (el navegador no abre TCP). Es el proxy del repo del
+  # cliente (proxy/main.ts). Con la red del host llega a OpenMU por 127.0.0.1 y por la IP de la LAN;
+  # desde la red de un contenedor la IP de la LAN no responde (Docker no hace la vuelta en U) y cada
+  # login esperaba 20 s antes de reintentar por 127.0.0.1.
+  proxy:
+    image: oven/bun:1.4.2
+    container_name: mu-proxy
+    working_dir: /app
+    command: ["bun", "proxy/main.ts"]
+    network_mode: host
+    environment:
+      HOSTNAME: 127.0.0.1   # sólo local, como el resto; 0.0.0.0 para abrirlo a la LAN
+      PORT: "3000"
+      LOG_PACKETS: "off"    # si no, escribe cada paquete en hex
+      ALLOW_TARGETS: >-
+        127.0.0.1:44405,127.0.0.1:44406,127.0.0.1:55901,127.0.0.1:55902,127.0.0.1:55903,
+        127.0.0.1:55904,127.0.0.1:55905,127.0.0.1:55906,
+        ${LAN_IP}:44405,${LAN_IP}:44406,${LAN_IP}:55901,${LAN_IP}:55902,
+        ${LAN_IP}:55903,${LAN_IP}:55904,${LAN_IP}:55905,${LAN_IP}:55906
+    volumes:
+      - ${CLIENT_DIR:-../client}:/app:ro
+      - proxy-data:/root/.mu-proxy
+    depends_on: [openmu-startup]
+    restart: unless-stopped
+
+  # El cliente web compilado, con Caddy (web/Caddyfile). Local en http://localhost:4173.
+  web:
+    image: caddy:2-alpine
+    container_name: mu-web
+    ports:
+      - "127.0.0.1:4173:4173"
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:-:4173}
+    volumes:
+      - ${CLIENT_DIR:-../client}/dist:/srv/client:ro
+      - ./web/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+    restart: unless-stopped
+
 volumes:
   dbdata:
+  proxy-data:
+  caddy-data:
