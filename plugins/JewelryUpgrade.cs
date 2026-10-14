@@ -11,7 +11,7 @@ using MUnique.OpenMU.PlugIns;
 /// <summary>
 /// Bless y Soul sobre anillos y colgantes, con la lógica de armas y sets pero chances propias (`Bless`, `Soul`): OpenMU los rechaza
 /// (<c>CanLevelBeUpgraded</c> sólo acepta casillas hasta las alas y estos tienen nivel máximo 4). Para el
-/// resto de los ítems se usa el handler original sin cambios. Life ya funciona: tienen la opción.
+/// resto de los ítems se usa el handler original sin cambios. Life (la opción) también tiene chance propia.
 /// </summary>
 /// <summary>
 /// Las chances de los anillos y colgantes, aparte de las de armas y sets (que siguen siendo las de OpenMU).
@@ -30,6 +30,12 @@ internal static class JewelryUpgrade
 
     /// <summary>Soul: hasta +9. Sube 3 de cada 10 (4,5 con suerte); si falla desde +7 vuelve a +0, si no baja uno.</summary>
     public static readonly JewelryRates Soul = new(SuccessPercent: 30, LuckBonusPercent: 15, ResetToZeroFromLevel: 7);
+
+    /// <summary>
+    /// Life: agrega la opción y la sube de a un nivel (+4 cada vez). Es la que más cuesta: 1 de cada 10, sin bono por
+    /// suerte; si falla, el ítem pierde la opción (como en armas y sets, donde la chance es 50 %).
+    /// </summary>
+    public const double LifeSuccessChance = 0.10;
 
     // ===================================================================
 
@@ -73,6 +79,54 @@ internal static class JewelryUpgrade
 
         return true;
     }
+
+    /// <summary>Lo de <c>ItemUpgradeConsumeHandlerPlugIn</c> para la opción (Life), con <see cref="LifeSuccessChance"/>.</summary>
+    public static bool UpgradeOption(Item item, IContext persistenceContext)
+    {
+        var options = item.Definition!.PossibleItemOptions.SelectMany(o => o.PossibleOptions)
+            .Where(o => o.OptionType == ItemOptionTypes.Option).ToList();
+        if (options.Count == 0)
+        {
+            return false;
+        }
+
+        var current = item.ItemOptions.FirstOrDefault(o => o.ItemOption?.OptionType == ItemOptionTypes.Option);
+        if (current is not null)
+        {
+            var higherPossible = current.ItemOption?.LevelDependentOptions.Any(o => o.Level > current.Level && o.RequiredItemLevel <= item.Level) ?? false;
+            if (!higherPossible)
+            {
+                return false;
+            }
+
+            if (Rand.NextRandomBool(LifeSuccessChance))
+            {
+                current.Level++;
+            }
+            else
+            {
+                item.ItemOptions.Remove(current);
+            }
+
+            return true;
+        }
+
+        if (Rand.NextRandomBool(LifeSuccessChance))
+        {
+            var possible = options.Where(o => !o.LevelDependentOptions.Any() || o.LevelDependentOptions.Any(l => l.RequiredItemLevel <= item.Level)).ToList();
+            if (possible.Count == 0)
+            {
+                return false;
+            }
+
+            var link = persistenceContext.CreateNew<ItemOptionLink>();
+            link.ItemOption = possible.SelectRandom();
+            link.Level = 1;
+            item.ItemOptions.Add(link);
+        }
+
+        return true;
+    }
 }
 
 [PlugIn]
@@ -97,4 +151,14 @@ public class SoulJewelSeason1 : SoulJewelConsumeHandlerPlugIn
         JewelryUpgrade.Applies(item)
             ? JewelryUpgrade.Upgrade(item, this.Configuration ??= (UpgradeItemLevelConfiguration)this.CreateDefaultConfig(), JewelryUpgrade.Soul, Rand.GetRandomizer())
             : base.ModifyItem(item, persistenceContext);
+}
+
+[PlugIn]
+[Guid("5b2c8e41-7d0a-4f6e-9a3b-1c4d5e6f7a83")]
+[Display(Name = "Jewel of Life (Season1)", Description = "Como el de OpenMU, con chance propia para anillos y colgantes.")]
+public class LifeJewelSeason1 : LifeJewelConsumeHandlerPlugIn
+{
+    /// <inheritdoc />
+    protected override bool ModifyItem(Item item, IContext persistenceContext) =>
+        JewelryUpgrade.Applies(item) ? JewelryUpgrade.UpgradeOption(item, persistenceContext) : base.ModifyItem(item, persistenceContext);
 }
