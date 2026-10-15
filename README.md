@@ -66,13 +66,11 @@ cambio de API de OpenMU aparece como error de compilación.
 
 ## 📝 Últimos cambios
 
-### 2026-10-14
+### 2026-10-15
 
 **Commits incluidos:**
-- (sin commits pendientes)
+- 9e71ed1 Sets de 2da clase: SQL de clases y bot de QA
 
 **Archivos modificados:**
-  - `.example`: .env.example
-  - `.md`: README.md
-  - `.yml`: compose.yml
-  - `.cs`: JewelryUpgrade.cs
+  - `.ts`: bot.ts, db.ts, mkchars.ts, sets.ts
+  - `.sql`: 001-fairy-elf-sin-sets-de-2da-clase.sql, 002-dark-wizard-sin-sets-de-2da-clase.sql, 003-dark-knight-sin-sets-de-2da-clase.sql
