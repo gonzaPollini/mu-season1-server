@@ -14,16 +14,18 @@ using MUnique.OpenMU.Network.Packets.ClientToServer;
 using MUnique.OpenMU.PlugIns;
 
 /// <summary>
-/// Reemplaza al JewelMixHandlerPlugIn de OpenMU (misma clave: <c>LahapJewelMixRequest.Code</c>). Con Lahap abierto
-/// delega en <see cref="ItemStackAction"/>, igual que OpenMU. Sin Lahap, con el interruptor prendido, empaqueta
-/// gratis desde el inventario; desarmar también (mismas validaciones que OpenMU, sin cobro).
+/// Reemplaza al JewelMixHandlerPlugIn de OpenMU (misma clave: <c>LahapJewelMixRequest.Code</c>). Con el interruptor
+/// prendido empaqueta y desempaqueta gratis, haya o no Lahap (mismas validaciones que OpenMU, sin cobro). Apagado
+/// rechaza todo con la marca <c>#jewelpack:off</c>, que el cliente muestra como mensaje rojo. Un Mix con joya 0xFF
+/// es la consulta del cliente: se contesta <c>#jewelpack:on</c> o <c>#jewelpack:off</c>.
 /// </summary>
 [PlugIn]
 [Guid("5b2c8e41-7d0a-4f6e-9a3b-1c4d5e6f7a91")]
-[Display(Name = "Joyas: empaquetar sin Lahap (Season1)", Description = "El de OpenMU; si está prendido «Joyas: empaquetar desde el inventario» empaqueta gratis sin Lahap. No desactivar.")]
+[Display(Name = "Joyas: motor de empaquetado (Season1), NO DESACTIVAR", Description = "Atiende los pedidos de empaquetar y desempaquetar joyas (reemplaza al de OpenMU). Si se desactiva, el empaquetado deja de funcionar en todo el juego. Para apagar el empaquetado usar «Joyas: empaquetar y desempaquetar (Season1)».")]
 public class JewelMixHandlerSeason1 : IPacketHandlerPlugIn
 {
-    private readonly ItemStackAction _mixAction = new();
+    /// <summary>Número de joya de la consulta del cliente; el real manda 0 a 9.</summary>
+    private const byte QueryJewel = 0xFF;
 
     /// <inheritdoc />
     public bool IsEncryptionExpected => LahapJewelMixRequest.HeaderType >= 0xC3;
@@ -40,40 +42,33 @@ public class JewelMixHandlerSeason1 : IPacketHandlerPlugIn
             return;
         }
 
-        var lahapOpen = player.OpenedNpc?.Definition.NpcWindow == NpcWindow.Lahap;
+        var on = player.GameContext.PlugInManager.IsPlugInActive(typeof(JewelBundleSwitch));
         switch (message.Operation)
         {
             case LahapJewelMixRequest.MixType.Mix:
-                var size = GetStackSize(message.MixingStackSize);
-                if (lahapOpen)
+                if ((byte)message.Item == QueryJewel)
                 {
-                    await this._mixAction.StackItemsAsync(player, (byte)message.Item, size).ConfigureAwait(false);
-                }
-                else if (!player.GameContext.PlugInManager.IsPlugInActive(typeof(JewelBundleSwitch)))
-                {
-                    // Apagado: avisar en vez de pasarlo a OpenMU, que sin Lahap no responde y lo loguea como hacker.
-                    await player.ShowBlueMessageAsync("Empaquetar desde el inventario está desactivado").ConfigureAwait(false);
-                }
-                else
-                {
-                    await StackForFreeAsync(player, (byte)message.Item, size).ConfigureAwait(false);
+                    // Consulta del cliente (nunca la manda el cliente real): contesta con la marca, no con un mensaje visible.
+                    await player.ShowBlueMessageAsync(on ? "#jewelpack:on" : "#jewelpack:off").ConfigureAwait(false);
+                    break;
                 }
 
+                if (!on)
+                {
+                    await player.ShowBlueMessageAsync("#jewelpack:off").ConfigureAwait(false);
+                    break;
+                }
+
+                await StackForFreeAsync(player, (byte)message.Item, GetStackSize(message.MixingStackSize)).ConfigureAwait(false);
                 break;
             case LahapJewelMixRequest.MixType.Unmix:
-                if (lahapOpen)
+                if (!on)
                 {
-                    await this._mixAction.UnstackItemsAsync(player, (byte)message.Item, message.UnmixingSourceSlot).ConfigureAwait(false);
-                }
-                else if (!player.GameContext.PlugInManager.IsPlugInActive(typeof(JewelBundleSwitch)))
-                {
-                    await player.ShowBlueMessageAsync("Empaquetar desde el inventario está desactivado").ConfigureAwait(false);
-                }
-                else
-                {
-                    await UnstackForFreeAsync(player, (byte)message.Item, message.UnmixingSourceSlot).ConfigureAwait(false);
+                    await player.ShowBlueMessageAsync("#jewelpack:off").ConfigureAwait(false);
+                    break;
                 }
 
+                await UnstackForFreeAsync(player, (byte)message.Item, message.UnmixingSourceSlot).ConfigureAwait(false);
                 break;
             default:
                 throw new ArgumentException($"The mix operation {message.Operation} is unknown.");
@@ -160,12 +155,12 @@ public class JewelMixHandlerSeason1 : IPacketHandlerPlugIn
 }
 
 /// <summary>
-/// El interruptor del panel de admin: prendido, empaquetar y desempaquetar joyas funciona sin Lahap y gratis;
-/// apagado, como OpenMU. Se toma en vivo. No hace nada más (el punto de extensión es sólo para figurar).
+/// El interruptor del panel de admin: prendido, empaquetar y desempaquetar joyas funciona gratis (inventario y Lahap);
+/// apagado, todo el empaquetado se rechaza. Se toma en vivo. No hace nada más (el punto de extensión es sólo para figurar).
 /// </summary>
 [PlugIn]
 [Guid("5b2c8e41-7d0a-4f6e-9a3b-1c4d5e6f7a92")]
-[Display(Name = "Joyas: empaquetar desde el inventario, sin Lahap (Season1)", Description = "Prendido: se empaqueta y se desempaqueta gratis sin abrir Lahap. Apagado: sin Lahap avisa que está desactivado; con Lahap, como OpenMU.")]
+[Display(Name = "Joyas: empaquetar y desempaquetar (Season1)", Description = "Prendido: clic derecho en el inventario y Lahap, gratis sin Lahap. Apagado: desactivado en todo el juego.")]
 public class JewelBundleSwitch : IItemConsumingPlugIn
 {
     /// <inheritdoc />
