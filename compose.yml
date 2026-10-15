@@ -41,7 +41,7 @@ services:
     command: ["bun", "proxy/main.ts"]
     network_mode: host
     environment:
-      HOSTNAME: 127.0.0.1   # sólo local, como el resto; 0.0.0.0 para abrirlo a la LAN
+      HOSTNAME: ${PROXY_HOST:-127.0.0.1}   # sólo local; PROXY_HOST=0.0.0.0 en .env lo abre a la LAN
       PORT: "3000"
       LOG_PACKETS: "off"    # si no, escribe cada paquete en hex
       ALLOW_TARGETS: >-
@@ -60,7 +60,7 @@ services:
     image: caddy:2-alpine
     container_name: mu-web
     ports:
-      - "127.0.0.1:4173:4173"
+      - "${WEB_BIND:-127.0.0.1}:4173:4173"   # WEB_BIND=0.0.0.0 en .env lo abre a la LAN
     environment:
       SITE_ADDRESS: ${SITE_ADDRESS:-:4173}
     volumes:
