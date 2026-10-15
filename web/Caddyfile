@@ -8,7 +8,9 @@
 	# Los .gz y .bin ya vienen comprimidos; esto comprime el resto (JS, CSS, JSON).
 	encode zstd gzip
 	# El index y el service worker nunca de la caché: un build nuevo se ve al recargar.
-	header /index.html Cache-Control no-cache
+	# Va por la ruta pedida (antes de try_files): "/" y las rutas de la app también son el index.
+	@page path / /index.html /online /offline /servers
+	header @page Cache-Control no-cache
 	header /sw.js Cache-Control no-cache
 	# Rutas de la app (/online, /offline, /servers): las resuelve el cliente.
 	try_files {path} /index.html
