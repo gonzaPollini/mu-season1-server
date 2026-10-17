@@ -1,0 +1,44 @@
+# PRUEBA de la migración a OpenMU 0.9.12 sobre una COPIA de la base (volumen openmu-prueba_dbdata,
+# restaurado de respaldo/openmu-0.9.10-*.dump). Usa los mismos puertos que el compose normal:
+# no levantar los dos a la vez. Uso: docker compose -f compose.prueba.yml up -d --build
+name: openmu-prueba
+services:
+  openmu-startup:
+    image: season1-openmu:0.9.12
+    build:
+      context: .
+      args:
+        OPENMU_IMAGE: munique/openmu:0.9.12
+    container_name: openmu-prueba
+    ports:
+      - "127.0.0.1:8081:8080"
+      - "${LAN_IP:?falta LAN_IP en .env}:44405:44405"
+      - "127.0.0.1:44405:44405"
+      - "${LAN_IP}:44406:44406"
+      - "127.0.0.1:44406:44406"
+      - "${LAN_IP}:55901-55906:55901-55906"
+      - "127.0.0.1:55980:55980"
+    environment:
+      DB_HOST: database
+      ASPNETCORE_URLS: http://+:8080
+      RESOLVE_IP: ${LAN_IP}
+      OPENMU_ADMIN_USER: ${OPENMU_ADMIN_USER:?falta OPENMU_ADMIN_USER en .env}
+      OPENMU_ADMIN_PASSWORD: ${OPENMU_ADMIN_PASSWORD:?falta OPENMU_ADMIN_PASSWORD en .env}
+    volumes:
+      - adminpanel-keys:/app/data-protection-keys
+    working_dir: /app/
+    depends_on: [database]
+  database:
+    image: postgres:16
+    container_name: openmu-prueba-db
+    environment:
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: openmu
+      POSTGRES_USER: postgres
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+volumes:
+  dbdata:
+    name: openmu-prueba_dbdata
+    external: true
+  adminpanel-keys:
